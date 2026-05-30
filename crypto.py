@@ -37,18 +37,23 @@ def encrypt_dob_preserve_year(
     key: bytes = DEFAULT_KEY.encode(),
 ) -> Optional[str]:
     """
-    Mask the month and day of a date of birth while preserving the year.
+    Mask the month and day of a date of birth while preserving the year
+    and the original input format.
 
     The transformation is deterministic (same input + key → same output) and
     based on HMAC-SHA256, so it cannot be reversed without the key.
 
-    Supported input formats:
-        "YYYY-MM-DD"               e.g. 1978-08-30
-        "YYYYMMDD"                 e.g. 19780830
-        "DD-MMM-YYYY HH:MM:SS.f"   e.g. 30-AUG-1978 00:00:00.000
+    Supported input formats (output mirrors whichever format was supplied):
+        "YYYY-MM-DD"                 e.g. 1978-08-30  → 1978-03-14
+        "YYYYMMDD"                   e.g. 19780830    → 19780314
+        "DD-MMM-YYYY HH:MM:SS.fff"   e.g. 30-AUG-1978 00:00:00.000
+                                          → 14-MAR-1978 00:00:00.000
 
-    Returns "YYYY-MM-DD" with year intact, or None if input is None.
-    Falls back to "1900-01-01" on unrecognised formats.
+    Returns masked date in the same format as the input, or None if input
+    is None.  Falls back to the format-matched sentinel on unrecognised input:
+        "YYYY-MM-DD" → "1900-01-01"
+        "YYYYMMDD"   → "19000101"
+        oracle fmt   → "01-JAN-1900 00:00:00.000"
     """
     if dob is None:
         return None
@@ -60,21 +65,29 @@ def encrypt_dob_preserve_year(
     ]
 
     parsed = None
+    matched_fmt = None
     for fmt in formats:
         try:
             parsed = datetime.datetime.strptime(dob.strip(), fmt).date()
+            matched_fmt = fmt
             break
         except ValueError:
             continue
 
-    if parsed is None:
+    if parsed is None or matched_fmt is None:
         return "1900-01-01"
 
     digest = hmac.new(key, dob.encode(), hashlib.sha256).digest()
     month = (digest[0] % 12) + 1
     day   = (digest[1] % 28) + 1
+    masked = datetime.date(parsed.year, month, day)
 
-    return datetime.date(parsed.year, month, day).isoformat()
+    if matched_fmt == "%Y%m%d":
+        return masked.strftime("%Y%m%d")
+    elif matched_fmt == "%d-%b-%Y %H:%M:%S.%f":
+        return masked.strftime("%d-%b-%Y 00:00:00.000").upper()
+    else:  # "%Y-%m-%d"
+        return masked.isoformat()
 
 
 # ---------------------------------------------------------------------------

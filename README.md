@@ -9,7 +9,7 @@ Built for PDPA / GDPR / MAS TRM compliance scenarios.
 |-----------------|---------------------|------------|-----------------|
 | NRIC / FIN      | FPE (FF1 / pyffx)   | ✅ Yes     | ✅ Yes           |
 | Passport number | FPE (FF1 / pyffx)   | ✅ Yes     | ✅ Yes           |
-| Date of birth   | HMAC-SHA256 masking | ❌ No      | ✅ Year intact   |
+| Date of birth   | HMAC-SHA256 masking | ❌ No      | ✅ Year + format |
 | Full name       | Salted SHA-256      | ❌ No      | ❌ Hex digest    |
 
 ---
@@ -98,9 +98,15 @@ Recommended: load the key from AWS Secrets Manager, HashiCorp Vault, or your clo
 
 ## Supported DOB formats
 
-- `YYYY-MM-DD`   e.g. `1978-08-30`
-- `YYYYMMDD`     e.g. `19780830`
-- `DD-MMM-YYYY HH:MM:SS.f`   e.g. `30-AUG-1978 00:00:00.000`
+The output format always mirrors the input format.
+
+| Input format | Example input | Example output |
+|---|---|---|
+| `YYYY-MM-DD` | `1978-08-30` | `1978-03-14` |
+| `YYYYMMDD` | `19780830` | `19780314` |
+| `DD-MMM-YYYY HH:MM:SS.fff` | `30-AUG-1978 00:00:00.000` | `14-MAR-1978 00:00:00.000` |
+
+Year is always preserved. Month and day are pseudorandomised via HMAC-SHA256 — deterministic per input+key, not reversible.
 
 ---
 

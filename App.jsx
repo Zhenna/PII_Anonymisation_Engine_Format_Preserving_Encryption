@@ -14,7 +14,7 @@ const SAMPLES = {
 const FIELD_META = {
   nric:     { label: "NRIC / FIN",      method: "FPE",    reversible: true,  icon: "🪪" },
   passport: { label: "Passport No.",    method: "FPE",    reversible: true,  icon: "📘" },
-  dob:      { label: "Date of Birth",   method: "HMAC",   reversible: false, icon: "📅" },
+  dob:      { label: "Date of Birth",   method: "HMAC",   reversible: false, icon: "📅", hint: "YYYY-MM-DD · YYYYMMDD · DD-MMM-YYYY HH:MM:SS.fff" },
   name:     { label: "Full Name",       method: "SHA-256",reversible: false, icon: "👤" },
 };
 
@@ -28,8 +28,8 @@ const TECH_CARDS = [
   {
     icon: "📅",
     title: "DOB Masking",
-    subtitle: "HMAC-SHA256, year intact",
-    body: "Month and day are pseudorandomised using a keyed HMAC digest. The birth year is preserved for age-band analytics. The transform is deterministic — the same input always produces the same masked output.",
+    subtitle: "HMAC-SHA256, year + format preserved",
+    body: "Month and day are pseudorandomised using a keyed HMAC digest. The birth year is preserved for age-band analytics, and the output mirrors the input format — YYYYMMDD in, YYYYMMDD out. Deterministic: same input always produces the same masked output.",
   },
   {
     icon: "#️⃣",
@@ -321,7 +321,12 @@ function Playground() {
     return {
       nric:     vals.nric     ? rot(vals.nric)     : null,
       passport: vals.passport ? rot(vals.passport) : null,
-      dob:      vals.dob      ? vals.dob.slice(0,4) + "-03-14" : null,
+      dob:      vals.dob      ? (() => {
+        const v = vals.dob.trim();
+        if (/^\d{8}$/.test(v)) return v.slice(0,4) + "0314";
+        if (/^\d{2}-[A-Za-z]{3}-\d{4}/.test(v)) return "14-MAR-" + v.slice(7,11) + " 00:00:00.000";
+        return v.slice(0,4) + "-03-14";
+      })() : null,
       name:     vals.name     ? "a3f8c2d1e5b9f2a7d4c8e1b3f6a2d9c5e8b1f4a7d2c5e9b3f6a1d8c4e7b2f5a9" : null,
     };
   }
@@ -470,6 +475,11 @@ function Playground() {
                   outline: "none",
                 }}
               />
+              {FIELD_META[field].hint && (
+                <div style={{ fontSize: 10, color: "#334155", marginTop: 4, fontFamily: "monospace" }}>
+                  {FIELD_META[field].hint}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -508,7 +518,7 @@ function Playground() {
           fontFamily: "monospace", textAlign: "right",
         }}>
           {mode === "encrypt"
-            ? "↺ NRIC and Passport can be decrypted with the same key"
+            ? "↺ NRIC and Passport can be decrypted with the same key · 📅 DOB output mirrors input format"
             : "DOB and Name are one-way transforms — original values are unchanged above"}
         </div>
       )}
