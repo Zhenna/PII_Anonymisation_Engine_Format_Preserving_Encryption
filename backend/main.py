@@ -25,7 +25,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, field_validator
 
-from crypto import (
+from backend.crypto import (
     encrypt_sg_id,
     decrypt_sg_id,
     encrypt_passport,
